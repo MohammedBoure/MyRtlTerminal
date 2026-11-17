@@ -265,7 +265,7 @@ internal static partial class Program
             window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
             if (window.IsFullScreen || window.WindowState != prevWindowState || window.WindowStyle != prevWindowStyle || window.ResizeMode != prevResizeMode ||
                 !ReferenceEquals(prevChrome, System.Windows.Shell.WindowChrome.GetWindowChrome(window)) ||
-                ((FrameworkElement)window.FindName("TitleBarArea")).Visibility != Visibility.Visible ||
+                ((FrameworkElement)window.FindName("TitleBarArea")).Visibility != Visibility.Collapsed ||
                 ((FrameworkElement)window.FindName("MenuBarArea")).Visibility != Visibility.Collapsed)
                 throw new Exception("Fullscreen toggle did not restore previous window state/style");
 

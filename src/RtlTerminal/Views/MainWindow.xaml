@@ -19,9 +19,10 @@
         SizeChanged="Window_SizeChanged"
         SourceInitialized="Window_SourceInitialized"
         PreviewKeyDown="Window_PreviewKeyDown"
+        PreviewMouseLeftButtonDown="Window_PreviewMouseLeftButtonDown"
         PreviewMouseWheel="Window_PreviewMouseWheel">
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="32"
+        <shell:WindowChrome CaptionHeight="0"
                             ResizeBorderThickness="6"
                             CornerRadius="8"
                             GlassFrameThickness="0"
@@ -531,16 +532,8 @@
     <DockPanel Background="{DynamicResource TerminalBackgroundBrush}">
         <Grid x:Name="TitleBarArea" DockPanel.Dock="Top"
               Height="32"
+              Visibility="Collapsed"
               Background="{DynamicResource TitleBarBrush}">
-            <Grid.Style>
-                <Style TargetType="Grid">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsFullScreen, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Grid.Style>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -610,12 +603,7 @@
             </DockPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                <Button x:Name="MacroStatusButton" Visibility="Collapsed" Margin="4,0" Padding="6,0" Height="24" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStatus_Click" ToolTip="{local:UiText Key='Stop recording / pause playback'}" AutomationProperties.Name="{local:UiText Key='Macro status'}"/>
-                <Button x:Name="MacroPauseButton" Visibility="Collapsed" Width="26" Height="24" Content="Ⅱ" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroPause_Click" ToolTip="{local:UiText Key='Pause / resume (Ctrl+Shift+Alt+P)'}" AutomationProperties.Name="{local:UiText Key='Pause or resume macro'}"/>
-                <Button x:Name="MacroStepButton" Visibility="Collapsed" Width="26" Height="24" Content="▸|" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStep_Click" ToolTip="{local:UiText Key='Run one step, then pause'}" AutomationProperties.Name="{local:UiText Key='Run one macro step'}"/>
-                <Button x:Name="MacroStopButton" Visibility="Collapsed" Width="26" Height="24" Content="■" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStop_Click" ToolTip="{local:UiText Key='Stop playback (Ctrl+Shift+Alt+End)'}" AutomationProperties.Name="{local:UiText Key='Stop macro'}"/>
-            </StackPanel>
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True" />
 
             <StackPanel Grid.Column="2"
                         Orientation="Horizontal"
@@ -818,6 +806,14 @@
                      Typography.NumeralAlignment="Tabular" />
         </Grid>
         </ScrollViewer>
+
+        <!-- Floating Macro Overlay (visible only while recording/playing) -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,22,0">
+            <Button x:Name="MacroStatusButton" Visibility="Collapsed" Margin="4,0" Padding="6,0" Height="24" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStatus_Click" ToolTip="{local:UiText Key='Stop recording / pause playback'}" AutomationProperties.Name="{local:UiText Key='Macro status'}"/>
+            <Button x:Name="MacroPauseButton" Visibility="Collapsed" Width="26" Height="24" Content="Ⅱ" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroPause_Click" ToolTip="{local:UiText Key='Pause / resume (Ctrl+Shift+Alt+P)'}" AutomationProperties.Name="{local:UiText Key='Pause or resume macro'}"/>
+            <Button x:Name="MacroStepButton" Visibility="Collapsed" Width="26" Height="24" Content="▸|" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStep_Click" ToolTip="{local:UiText Key='Run one step, then pause'}" AutomationProperties.Name="{local:UiText Key='Run one macro step'}"/>
+            <Button x:Name="MacroStopButton" Visibility="Collapsed" Width="26" Height="24" Content="■" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStop_Click" ToolTip="{local:UiText Key='Stop playback (Ctrl+Shift+Alt+End)'}" AutomationProperties.Name="{local:UiText Key='Stop macro'}"/>
+        </StackPanel>
 
         <!-- Floating Search Bar -->
         <Border x:Name="SearchBar"

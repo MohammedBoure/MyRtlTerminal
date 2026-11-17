@@ -580,6 +580,16 @@ public partial class MainWindow : Window
         CreateTerminalTab(profile, wslDistribution: wslDistribution);
     }
 
+    private void Window_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0 && !IsFullScreen)
+        {
+            e.Handled = true;
+            try { DragMove(); }
+            catch (InvalidOperationException) { }
+        }
+    }
+
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
     {
         WindowState = WindowState.Minimized;

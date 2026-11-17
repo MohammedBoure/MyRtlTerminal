@@ -168,6 +168,7 @@ public partial class MainWindow
             "opendir" or "explorer" or "dirhistory" or "dirs" or "exportsession" or "export-session" or "preview" or "htmlpreview" or "quit" or
             "search" or "find-text" or "settings" or "prefs" or
             "smartrtl" or "rowrtl" or "compat" or "theme" or "zoom" or "resetzoom" or "fullscreen" or
+            "minimize" or "maximize" or "restore" or
             "splitpane" or "split" or "closepane" or "movepane" or
             "quickinput" or "qi" or "proxy" or "macro" or "contextmenu" or
             "lang" or "guide" or "shortcuts" or "updates" or "about" or "status" or
@@ -251,6 +252,20 @@ public partial class MainWindow
 
             case "fullscreen":
                 ToggleFullScreen();
+                return;
+
+            case "minimize":
+                WindowState = WindowState.Minimized;
+                return;
+
+            case "maximize":
+                if (IsFullScreen) ToggleFullScreen();
+                WindowState = WindowState.Maximized;
+                return;
+
+            case "restore":
+                if (IsFullScreen) ToggleFullScreen();
+                WindowState = WindowState.Normal;
                 return;
 
             case "splitpane" or "split":
@@ -669,6 +684,7 @@ public partial class MainWindow
         sb.AppendLine("  \x1b[32mtheme\x1b[0m [dark|light]         Open theme settings or switch theme");
         sb.AppendLine("  \x1b[32mzoom\x1b[0m [in|out|reset]        Adjust font size (Ctrl++ / Ctrl+- / Ctrl+0)");
         sb.AppendLine("  \x1b[32mfullscreen\x1b[0m                 Toggle fullscreen (F11)");
+        sb.AppendLine("  \x1b[32mminimize\x1b[0m / \x1b[32mmaximize\x1b[0m / \x1b[32mrestore\x1b[0m  Window state (Alt+Drag moves window)");
         sb.AppendLine("  \x1b[32msplitpane\x1b[0m                  Split active pane (Ctrl+Shift+D)");
         sb.AppendLine("  \x1b[32mclosepane\x1b[0m                  Close active pane (Ctrl+Shift+W)");
         sb.AppendLine("  \x1b[32mmovepane\x1b[0m                   Move active pane to a separate tab");

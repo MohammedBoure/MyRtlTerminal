@@ -23,17 +23,14 @@ internal static partial class Program
             var titleBar = (FrameworkElement)window.FindName("TitleBarArea");
             var legacyTabs = (FrameworkElement)window.FindName("LegacyTabsChrome");
             var menuBar = (FrameworkElement)window.FindName("MenuBarArea");
-            var minimalTitle = (TextBlock)window.FindName("MinimalTitleText");
             var adminBadge = (Border)window.FindName("AdministratorBadge");
 
-            if (titleBar.Visibility != Visibility.Visible || titleBar.Height != 32)
-                throw new Exception("Minimal title bar is missing or wrong height.");
+            if (titleBar.Visibility != Visibility.Collapsed)
+                throw new Exception("Top title bar must be collapsed.");
             if (legacyTabs.Visibility != Visibility.Collapsed)
                 throw new Exception("Top tabs chrome must be collapsed.");
             if (menuBar.Visibility != Visibility.Collapsed)
                 throw new Exception("File/Edit menu bar must be collapsed.");
-            if (!minimalTitle.Text.Contains("Rtl Terminal"))
-                throw new Exception("Minimal window title text is missing.");
 
             Call("SetElevationBadge", false);
             if (adminBadge.Visibility != Visibility.Collapsed)
@@ -59,7 +56,7 @@ internal static partial class Program
             {
                 "opendir", "dirhistory", "exportsession", "preview", "quit",
                 "search", "settings", "smartrtl", "rowrtl", "compat", "theme",
-                "zoom", "fullscreen", "splitpane", "closepane", "movepane",
+                "zoom", "fullscreen", "minimize", "maximize", "restore", "splitpane", "closepane", "movepane",
                 "quickinput", "proxy", "macro", "contextmenu",
                 "profiles", "newtab", "tabs", "tab", "status", "lang",
                 "guide", "shortcuts", "updates", "about"
