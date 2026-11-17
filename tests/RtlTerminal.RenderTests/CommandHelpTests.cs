@@ -144,7 +144,21 @@ internal static partial class Program
             if (quietCmd.Contains("Behnam Tajadini") || quietCmd.Contains("RtlTerminal v"))
                 throw new Exception("Quiet startup command still contains startup banner.");
 
-            Console.WriteLine("PASS minimal chrome (no bars/external popup), in-terminal command handling, and fast quiet startup");
+            // Ctrl+Backspace must send BackwardKillWord (\x17) for PSReadLine/Bash.
+            var keySeqMethod = typeof(MainWindow).GetMethod("GetTerminalKeySequence", flags | BindingFlags.Static)!;
+            var ctrlBack = (string?)keySeqMethod.Invoke(null, [Key.Back, false, false, true, false]);
+            if (ctrlBack != "\x17")
+                throw new Exception($"Ctrl+Backspace expected '\\x17', got '{ctrlBack}'.");
+
+            // Bare '?' and 'dirs' must pass through to PowerShell/Bash.
+            Call("TrackTypedText", pane, "?");
+            if ((bool)Call("TryHandleEnterCommand", pane)!)
+                throw new Exception("Bare '?' must pass through to PowerShell.");
+            Call("TrackTypedText", pane, "dirs");
+            if ((bool)Call("TryHandleEnterCommand", pane)!)
+                throw new Exception("Bare 'dirs' must pass through to PowerShell/Bash.");
+
+            Console.WriteLine("PASS minimal chrome (no bars/external popup), PowerShell key forwarding, and fast quiet startup");
         }
         finally
         {

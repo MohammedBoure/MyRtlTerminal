@@ -197,12 +197,12 @@ public partial class MainWindow
 
     private static bool IsSupportedInvocation(string command, bool explicitPrefix) =>
         IsKnownCommand(command) ||
-        (explicitPrefix && command is "find" or "export" or "history" or "exit");
+        (explicitPrefix && command is "find" or "export" or "history" or "exit" or "?" or "dirs");
 
     private static bool IsKnownCommand(string name) =>
         name.ToLowerInvariant() is
-            "help" or "?" or
-            "opendir" or "explorer" or "dirhistory" or "dirs" or "exportsession" or "export-session" or "preview" or "htmlpreview" or "quit" or
+            "help" or
+            "opendir" or "explorer" or "dirhistory" or "exportsession" or "export-session" or "preview" or "htmlpreview" or "quit" or
             "search" or "find-text" or "settings" or "prefs" or
             "smartrtl" or "rowrtl" or "compat" or "theme" or "zoom" or "resetzoom" or "fullscreen" or
             "minimize" or "maximize" or "restore" or
@@ -756,7 +756,7 @@ public partial class MainWindow
         sb.AppendLine("  \x1b[32mquit\x1b[0m                       Close RtlTerminal window");
         sb.AppendLine();
         sb.AppendLine("\x1b[1;33mEdit & Settings\x1b[0m");
-        sb.AppendLine("  \x1b[32msearch\x1b[0m                     Open search bar (Ctrl+F)");
+        sb.AppendLine("  \x1b[32msearch\x1b[0m                     Open search bar (Ctrl+Shift+F)");
         sb.AppendLine("  \x1b[32msettings\x1b[0m                   Open Settings (fonts, bell, history, macros)");
         sb.AppendLine();
         sb.AppendLine("\x1b[1;33mView & RTL\x1b[0m");
@@ -807,7 +807,7 @@ public partial class MainWindow
             "dirhistory" or "dirs" => "\x1b[32mdirhistory\x1b[0m — Opens the searchable recent directories history window.",
             "exportsession" or "export-session" => "\x1b[32mexportsession\x1b[0m — Saves the current terminal buffer as a UTF-8 .txt file.",
             "preview" or "htmlpreview" => "\x1b[32mpreview\x1b[0m — Generates a local HTML preview of the terminal output and opens it in your browser.",
-            "search" or "find-text" => "\x1b[32msearch\x1b[0m — Opens the floating search bar (Shortcut: Ctrl+F, or use 'rtl find').",
+            "search" or "find-text" => "\x1b[32msearch\x1b[0m — Opens the floating search bar (Shortcut: Ctrl+Shift+F, or use 'rtl find').",
             "settings" or "prefs" => "\x1b[32msettings\x1b[0m — Opens Settings (Fonts, Theme, Bell, Directory History, Macros, Shortcuts).",
             "smartrtl" => "\x1b[32msmartrtl\x1b[0m [on|off|toggle] — Applies right-to-left layout only to lines containing RTL letters.",
             "rowrtl" => "\x1b[32mrowrtl\x1b[0m [on|off|toggle] — Forces right-to-left direction on every row.",

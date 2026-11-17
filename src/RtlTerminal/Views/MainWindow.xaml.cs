@@ -492,7 +492,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (controlPressed && key == Key.F)
+        if (controlPressed && shiftPressed && key == Key.F)
         {
             OpenSearchBar();
             e.Handled = true;
@@ -1413,7 +1413,7 @@ public partial class MainWindow : Window
             var bashPath = ShellProfiles.GitBashPath ?? "bash.exe";
             return ShellPath.WindowsArgument(bashPath) + " --login -i";
         }
-        const string powerShellDirectoryPrompt = "$global:__RtlOriginalPrompt=$function:prompt; function global:prompt { [Console]::Write(([char]27).ToString()+']9;9;'+$executionContext.SessionState.Path.CurrentFileSystemLocation.ProviderPath+[char]7); $__rtlPrompt=& $global:__RtlOriginalPrompt; [Console]::Write(([char]27).ToString()+']133;B'+[char]7); $__rtlPrompt }; ";
+        const string powerShellDirectoryPrompt = "$global:__RtlOriginalPrompt=$function:prompt; function global:prompt { [Console]::Write(([char]27).ToString()+']9;9;'+$executionContext.SessionState.Path.CurrentFileSystemLocation.ProviderPath+[char]7); $__rtlPrompt=if($global:__RtlOriginalPrompt){& $global:__RtlOriginalPrompt}else{'PS '+$executionContext.SessionState.Path.CurrentLocation+'> '}; [Console]::Write(([char]27).ToString()+']133;B'+[char]7); $__rtlPrompt }; ";
         var pwshPath = ShellProfiles.PowerShell7Path ?? "pwsh.exe";
         var command =
         !showIntroduction ? profile switch
@@ -2137,6 +2137,13 @@ public partial class MainWindow : Window
 
         var key = GetEffectiveKey(e);
         var altPressed = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
+        if (altPressed && !controlPressed && key >= Key.A && key <= Key.Z)
+        {
+            var letter = (char)((shiftPressed ? 'A' : 'a') + (key - Key.A));
+            SendUserKey(ActivePane, "\x1b" + letter, key, Keyboard.Modifiers);
+            e.Handled = true;
+            return;
+        }
         if (key == Key.Enter && !shiftPressed && !altPressed && !controlPressed &&
             TryHandleEnterCommand(ActivePane))
         {
@@ -2256,7 +2263,7 @@ public partial class MainWindow : Window
         {
             Key.Enter => alt ? "\x1b\r" : "\r",
             Key.Space => alt ? "\x1b " : " ",
-            Key.Back => alt ? "\x1b\x7f" : "\x7f",
+            Key.Back => control ? "\x17" : alt ? "\x1b\x7f" : "\x7f",
             Key.Escape => "\x1b",
             _ => null
         };

@@ -36,7 +36,7 @@ public static class ShortcutCatalog
         Add(clipboard, "Shift+Mouse", "Select text / scroll locally when the terminal application captures the mouse", "انتخاب متن یا اسکرول محلی وقتی برنامهٔ داخل ترمینال ماوس را دریافت می‌کند", "تحديد النص أو التمرير محلياً عند التقاط التطبيق للفأرة");
         Add(clipboard, "Double-click tab title", "Edit the tab name", "ویرایش نام تب", "تعديل اسم علامة التبويب");
         var search = L("Search and display", "جست‌وجو و نمایش", "البحث والعرض");
-        Add(search, "Ctrl+F", "Search terminal output", "جست‌وجو در خروجی ترمینال", "البحث في مخرجات الطرفية");
+        Add(search, "Ctrl+Shift+F", "Search terminal output", "جست‌وجو در خروجی ترمینال", "البحث في مخرجات الطرفية");
         Add(search, "Enter / Shift+Enter", "In the search box: next / previous result", "در کادر جست‌وجو: نتیجهٔ بعدی / قبلی", "داخل مربع البحث: النتيجة التالية / السابقة");
         Add(search, "Escape", "Close search when it is open; otherwise send Escape to the terminal", "بستن جست‌وجوی باز؛ در غیر این صورت ارسال Escape به ترمینال", "إغلاق البحث المفتوح؛ وإلا إرسال Escape إلى الطرفية");
         Add(search, "Ctrl++ / Ctrl+=", "Zoom in (also Ctrl + numpad +)", "بزرگ‌نمایی (با + بخش عددی کیبورد نیز کار می‌کند)", "تكبير؛ يعمل أيضاً مع + في لوحة الأرقام");
