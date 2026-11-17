@@ -266,6 +266,25 @@ public sealed class TerminalView : ContentControl
             point.Y < VerticalOffset + ViewportHeight && y > 0;
     }
 
+    public bool TryGetCursorBounds(UIElement relativeTo, out Point bottomLeft, out double rowHeight)
+    {
+        bottomLeft = default;
+        rowHeight = _lineHeight;
+        if (_snapshot is null || !IsLoaded) return false;
+        var row = _snapshot.ScrollbackCount + _snapshot.CursorRow;
+        var x = Math.Max(0, _snapshot.CursorColumn * _cellWidth);
+        var y = Math.Max(0, (row + 1) * _lineHeight);
+        try
+        {
+            bottomLeft = _surface.TranslatePoint(new Point(x, y), relativeTo);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
     private int GetLogicalColumn(int row, double visualX)
     {
         var physicalColumn = (int)Math.Floor(visualX / _cellWidth);

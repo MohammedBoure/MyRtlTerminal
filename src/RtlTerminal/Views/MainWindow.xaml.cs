@@ -75,6 +75,7 @@ public partial class MainWindow : Window
         using (StartupPerformance.Measure("MainWindow.Language")) InitializeUiLanguage();
         InitializeWindowStatus();
         InitializeQuickInput();
+        InitializeCommandSuggestions();
         InitializeTabDetach();
 #if CLI_TEST_LAB
         InitializeCliTestLab();
@@ -133,23 +134,65 @@ public partial class MainWindow : Window
         catch (System.Runtime.InteropServices.COMException) { return false; }
     }
 
+    private sealed record PrelaunchedShellResult(
+        TerminalProfile Profile,
+        string? WslDistribution,
+        string? StartupDirectory,
+        ConPtySession? Session,
+        short Columns,
+        short Rows,
+        Exception? Error);
+
+    private static Task<PrelaunchedShellResult>? _prelaunchedShellTask;
+
+    internal static void PrelaunchInitialShell()
+    {
+        if (_prelaunchedShellTask is not null) return;
+        _prelaunchedShellTask = Task.Run(() =>
+        {
+            const short initialCols = 120;
+            const short initialRows = 32;
+            var profile = LoadDefaultProfile();
+            var wslDistribution = profile == TerminalProfile.Wsl
+                ? AppSettings.LoadWslDistribution() ?? WslProfiles.DefaultDistribution()
+                : null;
+            var startupDirectory = ResolveStartupDirectory(null);
+            var wslDirectory = profile == TerminalProfile.Wsl ? ResolveWslStartupDirectory(null) : null;
+            var shellCommand = GetProfileCommand(profile, showIntroduction: false, wslDistribution, wslDirectory);
+            var directory = profile == TerminalProfile.Wsl
+                ? wslDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                : startupDirectory;
+
+            ConPtySession? session = null;
+            try
+            {
+                using (StartupPerformance.Measure("Terminal.CreatePseudoConsole"))
+                    session = new ConPtySession(initialCols, initialRows);
+                using (StartupPerformance.Measure("Terminal.ConPtyStart"))
+                    session.Start(shellCommand, directory);
+                return new PrelaunchedShellResult(profile, wslDistribution, startupDirectory, session, initialCols, initialRows, null);
+            }
+            catch (Exception ex)
+            {
+                session?.Dispose();
+                return new PrelaunchedShellResult(profile, wslDistribution, startupDirectory, null, initialCols, initialRows, ex);
+            }
+        });
+    }
+
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         using var timing = StartupPerformance.Measure("MainWindow.LoadedHandlers");
         if (_initialTerminalQueued) return;
         _initialTerminalQueued = true;
-        ContentRendered += StartInitialTerminalAfterRender;
-    }
-
-    private void StartInitialTerminalAfterRender(object? sender, EventArgs e)
-    {
-        ContentRendered -= StartInitialTerminalAfterRender;
-        if (_receivingDetachedTab) return;
-        StartupPerformance.Mark("MainWindow.FirstFrameBeforeTerminal");
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        if (!_receivingDetachedTab && _tabs.Count == 0)
+        {
+            StartupPerformance.Mark("MainWindow.FirstFrameBeforeTerminal");
+            CreateTerminalTabCore(_defaultProfile, null, null, backgroundStart: true);
+        }
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
         {
             if (_windowClosed) return;
-            if (_tabs.Count == 0) CreateTerminalTabCore(_defaultProfile, null, null, backgroundStart: true);
             RefreshContextMenuIntegrationState();
             if (!App.PerformanceProbe)
             {
@@ -172,7 +215,7 @@ public partial class MainWindow : Window
         var tab = new TerminalTab(pane);
         _tabs.Add(tab);
         ShowTab(tab);
-        StartPaneCore(pane, requestedStartupDirectory, true, backgroundStart);
+        StartPaneCore(pane, requestedStartupDirectory, false, backgroundStart);
         ActiveView.Focus();
     }
 
@@ -226,12 +269,13 @@ public partial class MainWindow : Window
         return pane;
     }
 
-    private void StartPane(TerminalPane pane, string? requestedStartupDirectory, bool showIntroduction = true)
+    private void StartPane(TerminalPane pane, string? requestedStartupDirectory, bool showIntroduction = false)
         => StartPaneCore(pane, requestedStartupDirectory, showIntroduction, false);
 
     private async void StartPaneCore(TerminalPane pane, string? requestedStartupDirectory, bool showIntroduction, bool backgroundStart)
     {
         using var timing = StartupPerformance.Measure("Terminal.StartPane");
+        var prelaunch = backgroundStart ? Interlocked.Exchange(ref _prelaunchedShellTask, null) : null;
         var startupDirectory = ResolveStartupDirectory(
             requestedStartupDirectory);
         var wslDirectory = pane.Profile == TerminalProfile.Wsl ? ResolveWslStartupDirectory(requestedStartupDirectory) : null;
@@ -241,28 +285,40 @@ public partial class MainWindow : Window
         {
             var columns = GetColumns(pane.View);
             var rows = GetRows(pane.View);
-            pane.Buffer = new TerminalBuffer(
-                columns,
-                rows,
-                _historySize);
-            pane.GridSize = (columns, rows);
+            ConPtySession session;
+
+            if (prelaunch is not null)
+            {
+                var pre = await prelaunch;
+                if (pre.Error is not null) throw pre.Error;
+                session = pre.Session!;
+                startupDirectory = pre.StartupDirectory;
+                pane.Buffer = new TerminalBuffer(pre.Columns, pre.Rows, _historySize);
+                pane.GridSize = (pre.Columns, pre.Rows);
+            }
+            else
+            {
+                pane.Buffer = new TerminalBuffer(columns, rows, _historySize);
+                pane.GridSize = (columns, rows);
+                string shellCommand;
+                using (StartupPerformance.Measure("Terminal.BuildCommand")) shellCommand = GetProfileCommand(pane.Profile, showIntroduction, pane.WslDistribution, wslDirectory);
+                var directory = pane.Profile == TerminalProfile.Wsl ? wslDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : startupDirectory;
+                ConPtySession Launch()
+                {
+                    ConPtySession created;
+                    using (StartupPerformance.Measure("Terminal.CreatePseudoConsole")) created = new ConPtySession(columns, rows);
+                    try
+                    {
+                        using (StartupPerformance.Measure("Terminal.ConPtyStart")) created.Start(shellCommand, directory);
+                        return created;
+                    }
+                    catch { created.Dispose(); throw; }
+                }
+                session = backgroundStart ? await Task.Run(Launch) : Launch();
+            }
+
             pane.CancellationTokenSource = new CancellationTokenSource();
             pane.SessionEnded = false;
-            string shellCommand;
-            using (StartupPerformance.Measure("Terminal.BuildCommand")) shellCommand = GetProfileCommand(pane.Profile, showIntroduction, pane.WslDistribution, wslDirectory);
-            var directory = pane.Profile == TerminalProfile.Wsl ? wslDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : startupDirectory;
-            ConPtySession Launch()
-            {
-                ConPtySession session;
-                using (StartupPerformance.Measure("Terminal.CreatePseudoConsole")) session = new ConPtySession(columns, rows);
-                try
-                {
-                    using (StartupPerformance.Measure("Terminal.ConPtyStart")) session.Start(shellCommand, directory);
-                    return session;
-                }
-                catch { session.Dispose(); throw; }
-            }
-            var session = backgroundStart ? await Task.Run(Launch) : Launch();
             if (_windowClosed || !_tabs.Any(tab => tab.Panes.Contains(pane)))
             {
                 // There is no normal output loop yet. Drain during shutdown so
@@ -341,7 +397,6 @@ public partial class MainWindow : Window
     private void Window_Closed(object? sender, EventArgs e)
     {
         _windowClosed = true;
-        ContentRendered -= StartInitialTerminalAfterRender;
         UiText.Changed -= ApplyUiLanguage;
         _directoryPollTimer.Stop();
         _renderTimer.Stop(); _resizeTimer.Stop();
@@ -913,6 +968,7 @@ public partial class MainWindow : Window
         KeyboardFocusChangedEventArgs e)
     {
         _pendingContextMenuKey = null;
+        HideCommandSuggestions();
         // The pane losing focus may no longer be the active one after a click.
         if (sender is TerminalView { Tag: TerminalPane pane } &&
             pane.LastRenderedSnapshot?.Modes.FocusReporting == true)
@@ -1467,6 +1523,7 @@ public partial class MainWindow : Window
     private void ShowTab(TerminalTab tab)
     {
         CloseSearchBar();
+        HideCommandSuggestions();
         _searchMatches.Clear();
         _currentSearchIndex = -1;
         if (_renamingTab is not null && !ReferenceEquals(_renamingTab, tab)) FinishTabRename(true, false, false);
@@ -2083,6 +2140,11 @@ public partial class MainWindow : Window
 
         var key = GetEffectiveKey(e);
         var altPressed = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
+        if (HandleSuggestionKeyDown(ActivePane, key, Keyboard.Modifiers))
+        {
+            e.Handled = true;
+            return;
+        }
         if (key == Key.Enter && !shiftPressed && !altPressed && !controlPressed &&
             TryHandleEnterCommand(ActivePane))
         {

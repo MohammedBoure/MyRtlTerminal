@@ -128,7 +128,45 @@ internal static partial class Program
             if (!(bool)Call("TryHandleEnterCommand", pane)! || UiText.Current != UiLanguage.English)
                 throw new Exception("'lang en' did not restore UI language to English.");
 
-            Console.WriteLine("PASS minimal chrome (no top tabs/menu bar) and full help/command dispatcher");
+            // Verify command history & suggestion popup with Up/Down navigation.
+            var historyPath = System.IO.Path.Combine(Environment.CurrentDirectory, "artifacts", "cmd-history-" + Guid.NewGuid().ToString("N") + ".json");
+            var historyStore = new CommandHistoryStore(historyPath);
+            historyStore.Record("git status");
+            historyStore.Record("git push origin main");
+            historyStore.Record("dotnet build RtlTerminal.sln");
+            typeof(MainWindow).GetField("_commandHistory", flags)!.SetValue(window, historyStore);
+
+            var popup = (Border)window.FindName("CommandSuggestionsPopup");
+            var list = (ListBox)window.FindName("CommandSuggestionsList");
+            Call("TrackTypedText", pane, "git");
+            if (popup.Visibility != Visibility.Visible || list.Items.Count < 2)
+                throw new Exception("Command suggestions popup did not open for typed prefix 'git'.");
+            if (list.SelectedIndex != -1)
+                throw new Exception("Command suggestions should not force-select an item before Up/Down navigation.");
+
+            if (!(bool)Call("HandleSuggestionKeyDown", pane, Key.Down, ModifierKeys.None)! || list.SelectedIndex != 0)
+                throw new Exception("Down arrow did not select the first suggestion.");
+            if (!(bool)Call("HandleSuggestionKeyDown", pane, Key.Down, ModifierKeys.None)! || list.SelectedIndex != 1)
+                throw new Exception("Second Down arrow did not move to the second suggestion.");
+            if (!(bool)Call("HandleSuggestionKeyDown", pane, Key.Up, ModifierKeys.None)! || list.SelectedIndex != 0)
+                throw new Exception("Up arrow did not move back to the first suggestion.");
+            if (!(bool)Call("HandleSuggestionKeyDown", pane, Key.Escape, ModifierKeys.None)! || popup.Visibility != Visibility.Collapsed)
+                throw new Exception("Escape did not dismiss the command suggestions popup.");
+
+            // Alternate screen must hide suggestions.
+            buffer.Process("\x1b[?1049h");
+            Call("TrackTypedText", pane, "git");
+            if (popup.Visibility != Visibility.Collapsed)
+                throw new Exception("Command suggestions appeared inside alternate screen.");
+            buffer.Process("\x1b[?1049l");
+
+            // Default launch banner must be disabled.
+            var quietCmd = (string)typeof(MainWindow).GetMethod("GetProfileCommand", flags | BindingFlags.Static)!
+                .Invoke(null, [Enum.ToObject(profileType, 1), false, null, null])!;
+            if (quietCmd.Contains("Behnam Tajadini") || quietCmd.Contains("RtlTerminal v"))
+                throw new Exception("Quiet startup command still contains startup banner.");
+
+            Console.WriteLine("PASS minimal chrome (no top tabs/menu bar), command suggestions popup, and fast quiet startup");
         }
         finally
         {

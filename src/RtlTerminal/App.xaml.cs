@@ -30,7 +30,8 @@ public partial class App : Application
 
         var timingArgument = Array.IndexOf(e.Args, "--performance-log");
         PerformanceProbe = e.Args.Contains("--performance-probe");
-        StartupPerformance.Start(timingArgument >= 0 && timingArgument + 1 < e.Args.Length ? e.Args[timingArgument + 1] : null);
+        if (timingArgument >= 0 || PerformanceProbe)
+            StartupPerformance.Start(timingArgument >= 0 && timingArgument + 1 < e.Args.Length ? e.Args[timingArgument + 1] : null);
         if (!OperatingSystem.IsWindowsVersionAtLeast(
                 major: 10,
                 minor: 0,
@@ -52,6 +53,7 @@ public partial class App : Application
 
         using (StartupPerformance.Measure("Startup.ThemeAndSettings"))
             AppTheme.Apply(AppSettings.LoadTheme(), ColorScheme.Find(AppSettings.LoadColorScheme()));
+        RtlTerminal.MainWindow.PrelaunchInitialShell();
         using (StartupPerformance.Measure("Startup.MainWindow.Construct")) MainWindow = new MainWindow();
         using (StartupPerformance.Measure("Startup.MainWindow.Show")) MainWindow.Show();
         if (PerformanceProbe)

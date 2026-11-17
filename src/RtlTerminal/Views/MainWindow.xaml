@@ -784,7 +784,7 @@
         </DockPanel>
         </Border>
 
-        <Grid>
+        <Grid x:Name="TerminalOverlayGrid">
         <ScrollViewer x:Name="PaneScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                       CanContentScroll="False" Focusable="False" SizeChanged="PaneScroller_SizeChanged" ScrollChanged="PaneScroller_ScrollChanged">
         <Grid x:Name="PaneHost" HorizontalAlignment="Left">
@@ -814,6 +814,80 @@
             <Button x:Name="MacroStepButton" Visibility="Collapsed" Width="26" Height="24" Content="▸|" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStep_Click" ToolTip="{local:UiText Key='Run one step, then pause'}" AutomationProperties.Name="{local:UiText Key='Run one macro step'}"/>
             <Button x:Name="MacroStopButton" Visibility="Collapsed" Width="26" Height="24" Content="■" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStop_Click" ToolTip="{local:UiText Key='Stop playback (Ctrl+Shift+Alt+End)'}" AutomationProperties.Name="{local:UiText Key='Stop macro'}"/>
         </StackPanel>
+
+        <!-- Command Suggestions Helper Popup -->
+        <Border x:Name="CommandSuggestionsPopup"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                MinWidth="280"
+                MaxWidth="540"
+                Background="{DynamicResource MenuBackgroundBrush}"
+                BorderBrush="{DynamicResource MenuBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="4"
+                Visibility="Collapsed"
+                Focusable="False">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.4" Color="Black" />
+            </Border.Effect>
+            <StackPanel Focusable="False">
+                <ListBox x:Name="CommandSuggestionsList"
+                         Focusable="False"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         MaxHeight="210"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         PreviewMouseLeftButtonUp="CommandSuggestionsList_PreviewMouseLeftButtonUp">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Focusable" Value="False" />
+                            <Setter Property="Padding" Value="8,4" />
+                            <Setter Property="Margin" Value="0,1" />
+                            <Setter Property="Foreground" Value="{DynamicResource ChromeForegroundBrush}" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="ItemBd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource MenuHighlightBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource MenuHighlightBrush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource ChromeStrongForegroundBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Command}" FontFamily="Consolas" FontSize="12.5"
+                                           TextTrimming="CharacterEllipsis" FlowDirection="LeftToRight" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding KindLabel}" FontFamily="Segoe UI" FontSize="10.5"
+                                           Margin="12,0,0,0" Foreground="{DynamicResource MutedForegroundBrush}" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Border BorderBrush="{DynamicResource SeparatorBrush}" BorderThickness="0,1,0,0" Margin="4,3,4,1" Padding="4,3,4,1">
+                    <TextBlock Text="↑↓ navigate  ·  Tab insert  ·  Enter run  ·  Esc close"
+                               FontFamily="Segoe UI" FontSize="10.5"
+                               Foreground="{DynamicResource MutedForegroundBrush}" />
+                </Border>
+            </StackPanel>
+        </Border>
 
         <!-- Floating Search Bar -->
         <Border x:Name="SearchBar"

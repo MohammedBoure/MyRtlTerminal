@@ -42,6 +42,7 @@ public partial class MainWindow
             if (!char.IsControl(ch))
                 pane.PendingCommandLine.Append(ch);
         }
+        UpdateCommandSuggestions(pane);
     }
 
     private void TrackPastedText(TerminalPane? pane, string text)
@@ -51,10 +52,14 @@ public partial class MainWindow
         {
             pane.PendingCommandLine.Clear();
             pane.CommandLineDirty = true;
+            HideCommandSuggestions();
             return;
         }
         if (!pane.CommandLineDirty)
+        {
             pane.PendingCommandLine.Append(text);
+            UpdateCommandSuggestions(pane);
+        }
     }
 
     private void TrackCommandKeyDown(TerminalPane? pane, Key key, ModifierKeys modifiers)
@@ -63,6 +68,7 @@ public partial class MainWindow
         if (IsAlternateScreenActive(pane))
         {
             ResetCommandLine(pane);
+            HideCommandSuggestions();
             return;
         }
 
@@ -77,6 +83,7 @@ public partial class MainWindow
                     char.IsLowSurrogate(pane.PendingCommandLine[^1])
                     ? 2 : 1;
                 pane.PendingCommandLine.Length -= removeCount;
+                UpdateCommandSuggestions(pane);
             }
             return;
         }
@@ -84,6 +91,7 @@ public partial class MainWindow
         if (key == Key.Escape || (control && key is Key.C or Key.U))
         {
             ResetCommandLine(pane);
+            HideCommandSuggestions();
             return;
         }
 
@@ -92,6 +100,7 @@ public partial class MainWindow
         {
             pane.PendingCommandLine.Clear();
             pane.CommandLineDirty = true;
+            HideCommandSuggestions();
         }
     }
 
@@ -109,6 +118,7 @@ public partial class MainWindow
 
     private bool TryHandleEnterCommand(TerminalPane? pane)
     {
+        HideCommandSuggestions();
         if (pane is null) return false;
         var raw = pane.CommandLineDirty ? "" : pane.PendingCommandLine.ToString();
         ResetCommandLine(pane);
@@ -118,10 +128,11 @@ public partial class MainWindow
         if (_macroRecorder is not null || _macroCancellation is not null || _macroPreparing)
             return false;
 
+        _commandHistory.Record(raw);
         return TryExecuteTerminalCommand(pane, raw);
     }
 
-    private bool TryExecuteTerminalCommand(TerminalPane pane, string rawInput)
+    private bool TryExecuteTerminalCommand(TerminalPane pane, string rawInput, bool clearShellLine = true)
     {
         var tokens = TokenizeCommand(rawInput.Trim());
         if (tokens.Count == 0) return false;
@@ -153,7 +164,7 @@ public partial class MainWindow
         if (!IsSupportedInvocation(command, explicitPrefix))
             return false;
 
-        ClearShellCommandLine(pane, rawInput);
+        if (clearShellLine) ClearShellCommandLine(pane, rawInput);
         DispatchTerminalCommand(pane, rawInput.Trim(), command, args);
         return true;
     }
@@ -170,7 +181,7 @@ public partial class MainWindow
             "smartrtl" or "rowrtl" or "compat" or "theme" or "zoom" or "resetzoom" or "fullscreen" or
             "minimize" or "maximize" or "restore" or
             "splitpane" or "split" or "closepane" or "movepane" or
-            "quickinput" or "qi" or "proxy" or "macro" or "contextmenu" or
+            "quickinput" or "qi" or "proxy" or "macro" or "contextmenu" or "suggestions" or
             "lang" or "guide" or "shortcuts" or "updates" or "about" or "status" or
             "profiles" or "newtab" or "tabs" or "tab" or "nexttab" or "prevtab" or "nextpane" or "prevpane"
 #if CLI_TEST_LAB
@@ -294,6 +305,12 @@ public partial class MainWindow
 
             case "contextmenu":
                 HandleContextMenuCommand(pane, echoedCommand, args);
+                return;
+
+            case "suggestions":
+                HandleToggleCommand(pane, echoedCommand, args, "Command suggestions",
+                    () => _commandSuggestionsEnabled,
+                    value => { _commandSuggestionsEnabled = value; if (!value) HideCommandSuggestions(); });
                 return;
 
             case "lang":
@@ -693,6 +710,7 @@ public partial class MainWindow
         sb.AppendLine("  \x1b[32mquickinput\x1b[0m                 Open Quick Input editor (Ctrl+Shift+Space)");
         sb.AppendLine("  \x1b[32mproxy\x1b[0m                      Open Proxy Manager");
         sb.AppendLine("  \x1b[32mmacro\x1b[0m <record|stop|list|run|manage|settings>  Manage/run macros");
+        sb.AppendLine("  \x1b[32msuggestions\x1b[0m [on|off]       Toggle command history helper popup (↑↓, Tab, Enter)");
         sb.AppendLine("  \x1b[32mcontextmenu\x1b[0m [on|off|status] Toggle 'Open in RtlTerminal' folder menu");
 #if CLI_TEST_LAB
         sb.AppendLine("  \x1b[32mclilab\x1b[0m                     Open CLI Test Lab (preview builds)");
