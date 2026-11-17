@@ -79,9 +79,7 @@ internal static partial class Program
         CheckStartupDirectories();
         CheckShortcutGuide();
         CheckUiLanguages();
-        CheckWindowStatus();
-        CheckProfileChrome();
-        CheckTabRename();
+        CheckMinimalChromeAndCommands();
         MacroTests.Run().GetAwaiter().GetResult();
         MacroV2Tests.Run().GetAwaiter().GetResult();
         CheckMacroUi();
@@ -141,8 +139,6 @@ internal static partial class Program
         Console.WriteLine("PASS renderer layout, RTL fixtures, selection, alternate screen and scrollback smoke tests");
         Console.WriteLine("PASS unchanged-row drawing reuse and style-only cache invalidation");
         CheckGraphicsAndRedraw();
-        CheckWindowHeader();
-        CheckTabOverflow();
         CheckWindowCloseConfirmation();
         CheckLinksAndMenu();
         CheckWrappedLinks();

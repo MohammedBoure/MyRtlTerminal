@@ -732,6 +732,7 @@ public partial class MainWindow : Window
         if (ActiveSession is null || string.IsNullOrEmpty(e.Text))
             return;
 
+        TrackTypedText(ActivePane, e.Text);
         SendUserInput(ActivePane, e.Text);
         e.Handled = true;
     }
@@ -1361,15 +1362,15 @@ public partial class MainWindow : Window
             TerminalProfile.PowerShell7 =>
                 ShellPath.WindowsArgument(pwshPath) +
                 """
-                 -NoLogo -NoExit -Command "$lines=@('RtlTerminal v{APP_VERSION}','','Author : Behnam Tajadini','Source : github.com/mirbehnam/RtlTerminal','YouTube: @aka_techno',''); $lines | ForEach-Object { Write-Host $_ }"
+                 -NoLogo -NoExit -Command "$lines=@('RtlTerminal v{APP_VERSION}','','Author : Behnam Tajadini','Source : github.com/mirbehnam/RtlTerminal','YouTube: @aka_techno','','Type ''help'' for RtlTerminal commands.',''); $lines | ForEach-Object { Write-Host $_ }"
                 """,
             TerminalProfile.PowerShell =>
                 """
-                C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoExit -Command "$lines=@('RtlTerminal v{APP_VERSION}','','Author : Behnam Tajadini','Source : github.com/mirbehnam/RtlTerminal','YouTube: @aka_techno',''); $lines | ForEach-Object { Write-Host $_ }"
+                C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoExit -Command "$lines=@('RtlTerminal v{APP_VERSION}','','Author : Behnam Tajadini','Source : github.com/mirbehnam/RtlTerminal','YouTube: @aka_techno','','Type ''help'' for RtlTerminal commands.',''); $lines | ForEach-Object { Write-Host $_ }"
                 """,
             _ =>
                 """
-                C:\Windows\System32\cmd.exe /D /Q /V:OFF /K "chcp 65001>nul & echo RtlTerminal v{APP_VERSION}& echo.& echo Author : Behnam Tajadini& echo Source : github.com/mirbehnam/RtlTerminal& echo YouTube: @aka_techno& echo."
+                C:\Windows\System32\cmd.exe /D /Q /V:OFF /K "chcp 65001>nul & echo RtlTerminal v{APP_VERSION}& echo.& echo Author : Behnam Tajadini& echo Source : github.com/mirbehnam/RtlTerminal& echo YouTube: @aka_techno& echo.& echo Type 'help' for RtlTerminal commands.& echo."
                 """
         }).Replace("{APP_VERSION}", AppVersion.Display);
         if (showIntroduction)
@@ -1464,6 +1465,7 @@ public partial class MainWindow : Window
         UpdateSelectedDirectory();
         LayoutPanes();
         RebuildTabStrip();
+        UpdateMinimalTitle();
         RenderVisiblePanes();
         QueueViewportResize();
     }
@@ -1706,6 +1708,7 @@ public partial class MainWindow : Window
         _tabs.Remove(source);
         LayoutPanes();
         RebuildTabStrip();
+        UpdateMinimalTitle();
         RenderVisiblePanes();
         QueueViewportResize();
         ActiveView.Focus();
@@ -2017,7 +2020,10 @@ public partial class MainWindow : Window
             if (ActiveView.HasSelection)
                 CopySelection();
             else
+            {
+                TrackCommandKeyDown(ActivePane, Key.C, ModifierKeys.Control);
                 SendUserKey(ActivePane, "\x03", Key.C, Keyboard.Modifiers);
+            }
 
             e.Handled = true;
             return;
@@ -2046,6 +2052,7 @@ public partial class MainWindow : Window
 
         if (controlPressed && e.Key >= Key.A && e.Key <= Key.Z)
         {
+            TrackCommandKeyDown(ActivePane, e.Key, Keyboard.Modifiers);
             var controlCharacter = (char)(e.Key - Key.A + 1);
             SendUserKey(ActivePane, controlCharacter.ToString(), e.Key, Keyboard.Modifiers);
             e.Handled = true;
@@ -2058,6 +2065,7 @@ public partial class MainWindow : Window
             InputLanguageManager.Current.CurrentInputLanguage
                 .TwoLetterISOLanguageName == "fa")
         {
+            TrackTypedText(ActivePane, "\u061f");
             SendUserInput(ActivePane, "\u061f");
             e.Handled = true;
             return;
@@ -2065,6 +2073,14 @@ public partial class MainWindow : Window
 
         var key = GetEffectiveKey(e);
         var altPressed = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
+        if (key == Key.Enter && !shiftPressed && !altPressed && !controlPressed &&
+            TryHandleEnterCommand(ActivePane))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        TrackCommandKeyDown(ActivePane, key, Keyboard.Modifiers);
         var sequence = GetTerminalKeySequence(
             key,
             shiftPressed,
@@ -2244,6 +2260,7 @@ public partial class MainWindow : Window
     private void WritePanePaste(TerminalPane pane, string text)
     {
         if (pane.Session is not { } session || string.IsNullOrEmpty(text)) return;
+        TrackPastedText(pane, text);
         SendUserInput(pane, pane.LastRenderedSnapshot?.Modes.BracketedPaste == true ? $"\x1b[200~{text}\x1b[201~" : text);
     }
 
@@ -2631,6 +2648,8 @@ public partial class MainWindow : Window
         public bool DirectoryPollPending { get; set; }
         public volatile bool SessionEnded;
         public bool HasUserInput { get; set; }
+        public StringBuilder PendingCommandLine { get; } = new();
+        public bool CommandLineDirty { get; set; }
 #if CLI_TEST_LAB
         public IDisposable? CliLabLifetime { get; set; }
 #endif

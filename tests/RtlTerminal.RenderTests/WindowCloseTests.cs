@@ -33,9 +33,12 @@ internal static partial class Program
         {
             window.Show(); Pump();
             var right = (Button)window.FindName("ScrollTabsRightButton");
-            right.Focus(); right.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
-            var frame = (Border)right.Template.FindName("ArrowFrame", right);
-            if (!right.IsMouseOver) Check(frame.Background is SolidColorBrush { Color.A: 0 }, "Arrow retained its focus/click background after release");
+            if (right.IsVisible)
+            {
+                right.Focus(); right.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
+                var frame = (Border)right.Template.FindName("ArrowFrame", right);
+                if (!right.IsMouseOver) Check(frame.Background is SolidColorBrush { Color.A: 0 }, "Arrow retained its focus/click background after release");
+            }
             var selected = typeof(MainWindow).GetField("_activeTab", flags)!.GetValue(window);
             foreach (var theme in new[] { AppThemeKind.Dark, AppThemeKind.Light })
             {

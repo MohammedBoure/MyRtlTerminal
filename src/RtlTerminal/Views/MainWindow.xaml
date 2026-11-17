@@ -21,7 +21,7 @@
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewMouseWheel="Window_PreviewMouseWheel">
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="40"
+        <shell:WindowChrome CaptionHeight="32"
                             ResizeBorderThickness="6"
                             CornerRadius="8"
                             GlassFrameThickness="0"
@@ -530,7 +530,7 @@
         </Border.Style>
     <DockPanel Background="{DynamicResource TerminalBackgroundBrush}">
         <Grid x:Name="TitleBarArea" DockPanel.Dock="Top"
-              Height="40"
+              Height="32"
               Background="{DynamicResource TitleBarBrush}">
             <Grid.Style>
                 <Style TargetType="Grid">
@@ -543,10 +543,11 @@
             </Grid.Style>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="138" />
             </Grid.ColumnDefinitions>
 
-            <DockPanel x:Name="TitleTabsHost" Grid.Column="0" Margin="8,0,20,0" LastChildFill="False"
+            <DockPanel x:Name="TitleTabsHost" Grid.Column="0" Margin="10,0,12,0" LastChildFill="False"
                        SizeChanged="TitleTabsHost_SizeChanged">
                 <Border x:Name="AdministratorBadge" DockPanel.Dock="Left" Width="26" Margin="0,0,4,0" Visibility="Collapsed"
                         ToolTip="{local:UiText Key='Running as administrator'}"
@@ -556,53 +557,67 @@
                           Data="M8,1 C6,3 3,3 1,4 L1,10 C1,14 4,17 8,19 C12,17 15,14 15,10 L15,4 C13,3 10,3 8,1 Z"
                           Stroke="{DynamicResource ChromeForegroundBrush}" StrokeThickness="1.2" Opacity="0.8"/>
                 </Border>
-                <Button x:Name="ScrollTabsLeftButton" DockPanel.Dock="Left" Visibility="Collapsed" IsEnabled="False"
-                        Margin="0,0,6,3"
-                        Style="{StaticResource TabScrollButtonStyle}" Click="ScrollTabsLeft_Click"
-                        ToolTip="{local:UiText Key='Scroll tabs left'}" AutomationProperties.Name="{local:UiText Key='Scroll tabs left'}"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Path Width="5" Height="8" Stretch="Fill" Data="M5,0 L0,4 L5,8 Z"
-                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                </Button>
-                <ScrollViewer x:Name="TabScroller" DockPanel.Dock="Left" VerticalScrollBarVisibility="Disabled"
-                              ScrollChanged="TabScroller_ScrollChanged"
-                              PreviewMouseWheel="TabScroller_PreviewMouseWheel"
-                              HorizontalScrollBarVisibility="Hidden">
-                    <StackPanel x:Name="TabStrip" Orientation="Horizontal"
-                                shell:WindowChrome.IsHitTestVisibleInChrome="True" />
-                </ScrollViewer>
-                <Button x:Name="ScrollTabsRightButton" DockPanel.Dock="Left" Visibility="Collapsed" IsEnabled="False"
-                        Margin="6,0,0,3"
-                        Style="{StaticResource TabScrollButtonStyle}" Click="ScrollTabsRight_Click"
-                        ToolTip="{local:UiText Key='Scroll tabs right'}" AutomationProperties.Name="{local:UiText Key='Scroll tabs right'}"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Path Width="5" Height="8" Stretch="Fill" Data="M0,0 L5,4 L0,8 Z"
-                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                </Button>
-                <Border x:Name="NewTerminalControls" DockPanel.Dock="Left" Width="65" Height="28" Margin="4,0,4,3"
-                        VerticalAlignment="Bottom" CornerRadius="4" Background="Transparent"
-                        SnapsToDevicePixels="True" UseLayoutRounding="True"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="1"/><ColumnDefinition Width="32"/></Grid.ColumnDefinitions>
-                        <Button x:Name="NewTabButton" ToolTip="{local:UiText Key='New terminal (Ctrl+Shift+T)'}"
-                                Style="{StaticResource ProfileActionSegmentStyle}" Click="NewTabButton_Click"
-                                AutomationProperties.Name="{local:UiText Key='New terminal'}">
-                            <Path Width="10" Height="10" Data="M5,0 L5,10 M0,5 L10,5" StrokeThickness="1"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                        </Button>
-                        <Border Grid.Column="1" Background="{DynamicResource ToolbarBorderBrush}" IsHitTestVisible="False"/>
-                        <Button x:Name="ProfileMenuButton" Grid.Column="2" ToolTip="{local:UiText Key='Terminal profiles'}"
-                                Style="{StaticResource ProfileActionSegmentStyle}" Click="ProfileMenuButton_Click"
-                                AutomationProperties.Name="{local:UiText Key='Terminal profiles'}">
-                            <Path Width="8" Height="4" Data="M0,0 L4,4 L8,0" StrokeThickness="1" StrokeLineJoin="Round"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                        </Button>
-                    </Grid>
-                </Border>
+                <TextBlock x:Name="MinimalTitleText" DockPanel.Dock="Left"
+                           Text="Rtl Terminal" FontFamily="Segoe UI" FontSize="12"
+                           Foreground="{DynamicResource ChromeForegroundBrush}" Opacity="0.8"
+                           VerticalAlignment="Center" IsHitTestVisible="False" />
+                <DockPanel x:Name="LegacyTabsChrome" DockPanel.Dock="Left" Visibility="Collapsed" LastChildFill="False">
+                    <Button x:Name="ScrollTabsLeftButton" DockPanel.Dock="Left" Visibility="Collapsed" IsEnabled="False"
+                            Margin="0,0,6,3"
+                            Style="{StaticResource TabScrollButtonStyle}" Click="ScrollTabsLeft_Click"
+                            ToolTip="{local:UiText Key='Scroll tabs left'}" AutomationProperties.Name="{local:UiText Key='Scroll tabs left'}"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path Width="5" Height="8" Stretch="Fill" Data="M5,0 L0,4 L5,8 Z"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                    </Button>
+                    <ScrollViewer x:Name="TabScroller" DockPanel.Dock="Left" VerticalScrollBarVisibility="Disabled"
+                                  ScrollChanged="TabScroller_ScrollChanged"
+                                  PreviewMouseWheel="TabScroller_PreviewMouseWheel"
+                                  HorizontalScrollBarVisibility="Hidden">
+                        <StackPanel x:Name="TabStrip" Orientation="Horizontal"
+                                    shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                    </ScrollViewer>
+                    <Button x:Name="ScrollTabsRightButton" DockPanel.Dock="Left" Visibility="Collapsed" IsEnabled="False"
+                            Margin="6,0,0,3"
+                            Style="{StaticResource TabScrollButtonStyle}" Click="ScrollTabsRight_Click"
+                            ToolTip="{local:UiText Key='Scroll tabs right'}" AutomationProperties.Name="{local:UiText Key='Scroll tabs right'}"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path Width="5" Height="8" Stretch="Fill" Data="M0,0 L5,4 L0,8 Z"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                    </Button>
+                    <Border x:Name="NewTerminalControls" DockPanel.Dock="Left" Width="65" Height="28" Margin="4,0,4,3"
+                            VerticalAlignment="Bottom" CornerRadius="4" Background="Transparent"
+                            SnapsToDevicePixels="True" UseLayoutRounding="True"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="1"/><ColumnDefinition Width="32"/></Grid.ColumnDefinitions>
+                            <Button x:Name="NewTabButton" ToolTip="{local:UiText Key='New terminal (Ctrl+Shift+T)'}"
+                                    Style="{StaticResource ProfileActionSegmentStyle}" Click="NewTabButton_Click"
+                                    AutomationProperties.Name="{local:UiText Key='New terminal'}">
+                                <Path Width="10" Height="10" Data="M5,0 L5,10 M0,5 L10,5" StrokeThickness="1"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            </Button>
+                            <Border Grid.Column="1" Background="{DynamicResource ToolbarBorderBrush}" IsHitTestVisible="False"/>
+                            <Button x:Name="ProfileMenuButton" Grid.Column="2" ToolTip="{local:UiText Key='Terminal profiles'}"
+                                    Style="{StaticResource ProfileActionSegmentStyle}" Click="ProfileMenuButton_Click"
+                                    AutomationProperties.Name="{local:UiText Key='Terminal profiles'}">
+                                <Path Width="8" Height="4" Data="M0,0 L4,4 L8,0" StrokeThickness="1" StrokeLineJoin="Round"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </DockPanel>
             </DockPanel>
 
-            <StackPanel Grid.Column="1"
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button x:Name="MacroStatusButton" Visibility="Collapsed" Margin="4,0" Padding="6,0" Height="24" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStatus_Click" ToolTip="{local:UiText Key='Stop recording / pause playback'}" AutomationProperties.Name="{local:UiText Key='Macro status'}"/>
+                <Button x:Name="MacroPauseButton" Visibility="Collapsed" Width="26" Height="24" Content="Ⅱ" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroPause_Click" ToolTip="{local:UiText Key='Pause / resume (Ctrl+Shift+Alt+P)'}" AutomationProperties.Name="{local:UiText Key='Pause or resume macro'}"/>
+                <Button x:Name="MacroStepButton" Visibility="Collapsed" Width="26" Height="24" Content="▸|" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStep_Click" ToolTip="{local:UiText Key='Run one step, then pause'}" AutomationProperties.Name="{local:UiText Key='Run one macro step'}"/>
+                <Button x:Name="MacroStopButton" Visibility="Collapsed" Width="26" Height="24" Content="■" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStop_Click" ToolTip="{local:UiText Key='Stop playback (Ctrl+Shift+Alt+End)'}" AutomationProperties.Name="{local:UiText Key='Stop macro'}"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
@@ -632,21 +647,8 @@
             </StackPanel>
         </Grid>
 
-        <Border x:Name="MenuBarArea" DockPanel.Dock="Top" Background="{DynamicResource ToolbarBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1">
-        <Border.Style>
-            <Style TargetType="Border">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsFullScreen, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-        </Border.Style>
+        <Border x:Name="MenuBarArea" DockPanel.Dock="Top" Visibility="Collapsed" Background="{DynamicResource ToolbarBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1">
         <DockPanel Margin="8,0,14,3">
-        <Button x:Name="MacroStopButton" DockPanel.Dock="Right" Visibility="Collapsed" Width="26" Height="26" Content="■" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStop_Click" ToolTip="{local:UiText Key='Stop playback (Ctrl+Shift+Alt+End)'}" AutomationProperties.Name="{local:UiText Key='Stop macro'}"/>
-        <Button x:Name="MacroStepButton" DockPanel.Dock="Right" Visibility="Collapsed" Width="26" Height="26" Content="▸|" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStep_Click" ToolTip="{local:UiText Key='Run one step, then pause'}" AutomationProperties.Name="{local:UiText Key='Run one macro step'}"/>
-        <Button x:Name="MacroPauseButton" DockPanel.Dock="Right" Visibility="Collapsed" Width="26" Height="26" Content="Ⅱ" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroPause_Click" ToolTip="{local:UiText Key='Pause / resume (Ctrl+Shift+Alt+P)'}" AutomationProperties.Name="{local:UiText Key='Pause or resume macro'}"/>
-        <Button x:Name="MacroStatusButton" DockPanel.Dock="Right" Visibility="Collapsed" Margin="4,0" Padding="6,0" Height="26" Style="{StaticResource WindowCaptionButtonStyle}" Click="MacroStatus_Click" ToolTip="{local:UiText Key='Stop recording / pause playback'}" AutomationProperties.Name="{local:UiText Key='Macro status'}"/>
         <Button x:Name="HtmlPreviewButton" DockPanel.Dock="Right" Width="30" Height="26" Margin="8,0,0,0"
                 Style="{StaticResource WindowCaptionButtonStyle}" Click="HtmlPreviewButton_Click"
                 ToolTip="{local:UiText Key='Preview this page in your browser'}" AutomationProperties.Name="{local:UiText Key='HTML preview'}">

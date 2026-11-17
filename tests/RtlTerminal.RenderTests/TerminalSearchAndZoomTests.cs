@@ -266,7 +266,7 @@ internal static partial class Program
             if (window.IsFullScreen || window.WindowState != prevWindowState || window.WindowStyle != prevWindowStyle || window.ResizeMode != prevResizeMode ||
                 !ReferenceEquals(prevChrome, System.Windows.Shell.WindowChrome.GetWindowChrome(window)) ||
                 ((FrameworkElement)window.FindName("TitleBarArea")).Visibility != Visibility.Visible ||
-                ((FrameworkElement)window.FindName("MenuBarArea")).Visibility != Visibility.Visible)
+                ((FrameworkElement)window.FindName("MenuBarArea")).Visibility != Visibility.Collapsed)
                 throw new Exception("Fullscreen toggle did not restore previous window state/style");
 
             Console.WriteLine("PASS terminal search bar navigation, RTL/Arabic search, case sensitivity, font zoom/reset, fullscreen toggle and bundled terminal font recommendations");
