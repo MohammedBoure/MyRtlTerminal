@@ -28,10 +28,14 @@ public sealed class ProxyHistoryStore
         Directory.CreateDirectory(DirectoryPath);
         if ((File.GetAttributes(DirectoryPath) & FileAttributes.ReparsePoint) != 0) throw new IOException("History directory must not be a symbolic link.");
         var sid = WindowsIdentity.GetCurrent().User ?? throw new UnauthorizedAccessException();
-        var security = new DirectorySecurity(); security.SetOwner(sid); security.SetAccessRuleProtection(true, false);
+        var info = new DirectoryInfo(DirectoryPath);
+        var currentOwner = info.GetAccessControl(AccessControlSections.Owner).GetOwner(typeof(SecurityIdentifier));
+        var security = new DirectorySecurity();
+        if (!sid.Equals(currentOwner)) security.SetOwner(sid);
+        security.SetAccessRuleProtection(true, false);
         security.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.FullControl, InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
         security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
-        new DirectoryInfo(DirectoryPath).SetAccessControl(security);
+        info.SetAccessControl(security);
     }
     public FileStream AcquireLock()
     {
