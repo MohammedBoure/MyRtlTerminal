@@ -6,7 +6,6 @@ Application services for settings, fonts, shell discovery, history, macros, upda
 
 - `AppSettings.cs` — Persistent user preferences in the Windows Registry.
 - `BundledFonts.cs` — Built-in monospace terminal fonts and font resolution.
-- `CommandHistoryStore.cs` — Persistent recent command history store and prefix/substring suggestion ranker.
 - `ContextMenuIntegration.cs` — Windows Explorer folder context menu ("Open in RtlTerminal") registration.
 - `DirectoryHistoryStore.cs` / `DirectoryOpenMode.cs` — Recent working directory history storage and replacement policy.
 - `EnvironmentPaths.cs` / `ProcessDirectory.cs` / `ProcessPrivileges.cs` — Process environment, working directory inspection, and privilege checks.

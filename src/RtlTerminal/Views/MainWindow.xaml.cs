@@ -75,7 +75,6 @@ public partial class MainWindow : Window
         using (StartupPerformance.Measure("MainWindow.Language")) InitializeUiLanguage();
         InitializeWindowStatus();
         InitializeQuickInput();
-        InitializeCommandSuggestions();
         InitializeTabDetach();
 #if CLI_TEST_LAB
         InitializeCliTestLab();
@@ -968,7 +967,6 @@ public partial class MainWindow : Window
         KeyboardFocusChangedEventArgs e)
     {
         _pendingContextMenuKey = null;
-        HideCommandSuggestions();
         // The pane losing focus may no longer be the active one after a click.
         if (sender is TerminalView { Tag: TerminalPane pane } &&
             pane.LastRenderedSnapshot?.Modes.FocusReporting == true)
@@ -1463,7 +1461,7 @@ public partial class MainWindow : Window
             profile == TerminalProfile.PowerShell7 && !IsPowerShell7Available() ||
             profile == TerminalProfile.GitBash && !IsGitBashAvailable())
         {
-            return TerminalProfile.CommandPrompt;
+            return IsPowerShell7Available() ? TerminalProfile.PowerShell7 : TerminalProfile.CommandPrompt;
         }
 
         return profile;
@@ -1523,7 +1521,6 @@ public partial class MainWindow : Window
     private void ShowTab(TerminalTab tab)
     {
         CloseSearchBar();
-        HideCommandSuggestions();
         _searchMatches.Clear();
         _currentSearchIndex = -1;
         if (_renamingTab is not null && !ReferenceEquals(_renamingTab, tab)) FinishTabRename(true, false, false);
@@ -2140,11 +2137,6 @@ public partial class MainWindow : Window
 
         var key = GetEffectiveKey(e);
         var altPressed = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
-        if (HandleSuggestionKeyDown(ActivePane, key, Keyboard.Modifiers))
-        {
-            e.Handled = true;
-            return;
-        }
         if (key == Key.Enter && !shiftPressed && !altPressed && !controlPressed &&
             TryHandleEnterCommand(ActivePane))
         {

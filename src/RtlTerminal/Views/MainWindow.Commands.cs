@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
@@ -42,7 +43,6 @@ public partial class MainWindow
             if (!char.IsControl(ch))
                 pane.PendingCommandLine.Append(ch);
         }
-        UpdateCommandSuggestions(pane);
     }
 
     private void TrackPastedText(TerminalPane? pane, string text)
@@ -52,14 +52,10 @@ public partial class MainWindow
         {
             pane.PendingCommandLine.Clear();
             pane.CommandLineDirty = true;
-            HideCommandSuggestions();
             return;
         }
         if (!pane.CommandLineDirty)
-        {
             pane.PendingCommandLine.Append(text);
-            UpdateCommandSuggestions(pane);
-        }
     }
 
     private void TrackCommandKeyDown(TerminalPane? pane, Key key, ModifierKeys modifiers)
@@ -68,7 +64,6 @@ public partial class MainWindow
         if (IsAlternateScreenActive(pane))
         {
             ResetCommandLine(pane);
-            HideCommandSuggestions();
             return;
         }
 
@@ -83,7 +78,6 @@ public partial class MainWindow
                     char.IsLowSurrogate(pane.PendingCommandLine[^1])
                     ? 2 : 1;
                 pane.PendingCommandLine.Length -= removeCount;
-                UpdateCommandSuggestions(pane);
             }
             return;
         }
@@ -91,7 +85,6 @@ public partial class MainWindow
         if (key == Key.Escape || (control && key is Key.C or Key.U))
         {
             ResetCommandLine(pane);
-            HideCommandSuggestions();
             return;
         }
 
@@ -100,7 +93,6 @@ public partial class MainWindow
         {
             pane.PendingCommandLine.Clear();
             pane.CommandLineDirty = true;
-            HideCommandSuggestions();
         }
     }
 
@@ -118,9 +110,9 @@ public partial class MainWindow
 
     private bool TryHandleEnterCommand(TerminalPane? pane)
     {
-        HideCommandSuggestions();
         if (pane is null) return false;
-        var raw = pane.CommandLineDirty ? "" : pane.PendingCommandLine.ToString();
+        var wasDirty = pane.CommandLineDirty;
+        var raw = wasDirty ? ExtractRecalledPromptCommand(pane) : pane.PendingCommandLine.ToString();
         ResetCommandLine(pane);
 
         if (string.IsNullOrWhiteSpace(raw) || IsAlternateScreenActive(pane))
@@ -128,11 +120,26 @@ public partial class MainWindow
         if (_macroRecorder is not null || _macroCancellation is not null || _macroPreparing)
             return false;
 
-        _commandHistory.Record(raw);
-        return TryExecuteTerminalCommand(pane, raw);
+        return TryExecuteTerminalCommand(pane, raw, clearWithRevert: wasDirty);
     }
 
-    private bool TryExecuteTerminalCommand(TerminalPane pane, string rawInput, bool clearShellLine = true)
+    private static string ExtractRecalledPromptCommand(TerminalPane pane)
+    {
+        var snapshot = pane.Buffer?.CaptureSnapshot() ?? pane.LastRenderedSnapshot;
+        if (snapshot is null) return "";
+        var rowIndex = snapshot.ScrollbackCount + snapshot.CursorRow;
+        if (rowIndex < 0 || rowIndex >= snapshot.Lines.Count) return "";
+        var line = snapshot.Lines[rowIndex].Text;
+        foreach (var marker in new[] { ">> ", "> ", "$ ", "# " })
+        {
+            var idx = line.LastIndexOf(marker, StringComparison.Ordinal);
+            if (idx >= 0)
+                return line[(idx + marker.Length)..].Trim();
+        }
+        return "";
+    }
+
+    private bool TryExecuteTerminalCommand(TerminalPane pane, string rawInput, bool clearWithRevert = false)
     {
         var tokens = TokenizeCommand(rawInput.Trim());
         if (tokens.Count == 0) return false;
@@ -164,9 +171,28 @@ public partial class MainWindow
         if (!IsSupportedInvocation(command, explicitPrefix))
             return false;
 
-        if (clearShellLine) ClearShellCommandLine(pane, rawInput);
+        ClearShellCommandLine(pane, rawInput, clearWithRevert);
+        RecordInPowerShellHistory(pane, rawInput.Trim());
         DispatchTerminalCommand(pane, rawInput.Trim(), command, args);
         return true;
+    }
+
+    private static void RecordInPowerShellHistory(TerminalPane pane, string command)
+    {
+        if (string.IsNullOrWhiteSpace(command)) return;
+        if (pane.Profile is not (TerminalProfile.PowerShell or TerminalProfile.PowerShell7)) return;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var path = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "Microsoft", "Windows", "PowerShell", "PSReadLine", "ConsoleHost_history.txt");
+                if (!File.Exists(path)) return;
+                File.AppendAllText(path, command + Environment.NewLine, new UTF8Encoding(false));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        });
     }
 
     private static bool IsSupportedInvocation(string command, bool explicitPrefix) =>
@@ -181,17 +207,22 @@ public partial class MainWindow
             "smartrtl" or "rowrtl" or "compat" or "theme" or "zoom" or "resetzoom" or "fullscreen" or
             "minimize" or "maximize" or "restore" or
             "splitpane" or "split" or "closepane" or "movepane" or
-            "quickinput" or "qi" or "proxy" or "macro" or "contextmenu" or "suggestions" or
+            "quickinput" or "qi" or "proxy" or "macro" or "contextmenu" or
             "lang" or "guide" or "shortcuts" or "updates" or "about" or "status" or
-            "profiles" or "newtab" or "tabs" or "tab" or "nexttab" or "prevtab" or "nextpane" or "prevpane"
+            "profiles" or "newtab" or "setdefault" or "tabs" or "tab" or "nexttab" or "prevtab" or "nextpane" or "prevpane"
 #if CLI_TEST_LAB
             or "clilab"
 #endif
             ;
 
-    private static void ClearShellCommandLine(TerminalPane pane, string rawInput)
+    private static void ClearShellCommandLine(TerminalPane pane, string rawInput, bool clearWithRevert)
     {
         if (pane.Session is not { } session || pane.SessionEnded) return;
+        if (clearWithRevert)
+        {
+            session.Write(pane.Profile is TerminalProfile.Wsl or TerminalProfile.GitBash ? "\x15" : "\x1b");
+            return;
+        }
         var count = new StringInfo(rawInput).LengthInTextElements;
         if (count > 0)
             session.Write(new string('\x7f', count));
@@ -307,10 +338,8 @@ public partial class MainWindow
                 HandleContextMenuCommand(pane, echoedCommand, args);
                 return;
 
-            case "suggestions":
-                HandleToggleCommand(pane, echoedCommand, args, "Command suggestions",
-                    () => _commandSuggestionsEnabled,
-                    value => { _commandSuggestionsEnabled = value; if (!value) HideCommandSuggestions(); });
+            case "setdefault":
+                HandleSetDefaultProfileCommand(pane, echoedCommand, args);
                 return;
 
             case "lang":
@@ -605,17 +634,10 @@ public partial class MainWindow
         WriteCommandOutput(pane, echoed, $"\x1b[32mInterface language set to {language}.\x1b[0m");
     }
 
-    private void HandleNewTabCommand(TerminalPane pane, string echoed, List<string> args)
+    private bool TryResolveProfileQuery(string query, out ShellMenuItem found)
     {
-        if (args.Count == 0)
-        {
-            CreateTerminalTab(_defaultProfile);
-            return;
-        }
-
-        var query = string.Join(" ", args).Trim();
         var available = GetAvailableProfiles();
-        ShellMenuItem? selected = null;
+        ShellMenuItem? selected;
 
         if (int.TryParse(query, out var idx) && idx >= 1 && idx <= available.Count)
             selected = available[idx - 1];
@@ -634,13 +656,56 @@ public partial class MainWindow
             };
         }
 
-        if (selected is not { Header: not null } found)
+        if (selected is { Header: not null } resolved)
+        {
+            found = resolved;
+            return true;
+        }
+        found = default;
+        return false;
+    }
+
+    private void HandleNewTabCommand(TerminalPane pane, string echoed, List<string> args)
+    {
+        if (args.Count == 0)
+        {
+            CreateTerminalTab(_defaultProfile);
+            return;
+        }
+
+        var query = string.Join(" ", args).Trim();
+        if (!TryResolveProfileQuery(query, out var found))
         {
             WriteCommandOutput(pane, echoed, $"\x1b[33mProfile '{query}' not found. Run 'profiles' to list available shells.\x1b[0m");
             return;
         }
 
         CreateTerminalTab(found.Profile, wslDistribution: found.WslDistribution);
+    }
+
+    private void HandleSetDefaultProfileCommand(TerminalPane pane, string echoed, List<string> args)
+    {
+        if (args.Count == 0)
+        {
+            WriteCommandOutput(pane, echoed, $"Default profile: \x1b[36m{GetProfileTitle(_defaultProfile)}\x1b[0m\r\nUsage: setdefault <pwsh|powershell|cmd|bash|wsl>");
+            return;
+        }
+
+        var query = string.Join(" ", args).Trim();
+        if (!TryResolveProfileQuery(query, out var found))
+        {
+            WriteCommandOutput(pane, echoed, $"\x1b[33mProfile '{query}' not found. Run 'profiles' to list available shells.\x1b[0m");
+            return;
+        }
+
+        _defaultProfile = found.Profile;
+        AppSettings.SaveTerminalProfile(found.Profile.ToString());
+        if (found.Profile == TerminalProfile.Wsl)
+        {
+            _defaultWslDistribution = found.WslDistribution;
+            AppSettings.SaveWslDistribution(found.WslDistribution);
+        }
+        WriteCommandOutput(pane, echoed, $"\x1b[32mDefault startup profile set to {found.Header}.\x1b[0m");
     }
 
     private void HandleSwitchTabCommand(TerminalPane pane, string echoed, List<string> args)
@@ -710,15 +775,15 @@ public partial class MainWindow
         sb.AppendLine("  \x1b[32mquickinput\x1b[0m                 Open Quick Input editor (Ctrl+Shift+Space)");
         sb.AppendLine("  \x1b[32mproxy\x1b[0m                      Open Proxy Manager");
         sb.AppendLine("  \x1b[32mmacro\x1b[0m <record|stop|list|run|manage|settings>  Manage/run macros");
-        sb.AppendLine("  \x1b[32msuggestions\x1b[0m [on|off]       Toggle command history helper popup (↑↓, Tab, Enter)");
         sb.AppendLine("  \x1b[32mcontextmenu\x1b[0m [on|off|status] Toggle 'Open in RtlTerminal' folder menu");
 #if CLI_TEST_LAB
         sb.AppendLine("  \x1b[32mclilab\x1b[0m                     Open CLI Test Lab (preview builds)");
 #endif
         sb.AppendLine();
         sb.AppendLine("\x1b[1;33mShells & Panes\x1b[0m");
-        sb.AppendLine("  \x1b[32mprofiles\x1b[0m                   List available shells (PowerShell, CMD, WSL, Git Bash)");
+        sb.AppendLine("  \x1b[32mprofiles\x1b[0m                   List available shells (PowerShell 7, CMD, WSL, Git Bash)");
         sb.AppendLine("  \x1b[32mnewtab\x1b[0m [profile]           Open a new session tab (Ctrl+Shift+T)");
+        sb.AppendLine("  \x1b[32msetdefault\x1b[0m <profile>       Set default startup shell (e.g. pwsh, cmd, wsl)");
         sb.AppendLine("  \x1b[32mtabs\x1b[0m / \x1b[32mtab\x1b[0m <n>             List or switch sessions (Ctrl+Tab)");
         sb.AppendLine("  \x1b[32mnextpane\x1b[0m / \x1b[32mprevpane\x1b[0m        Switch between split panes (Ctrl+Shift+Right/Left)");
         sb.AppendLine();

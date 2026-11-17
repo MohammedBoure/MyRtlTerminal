@@ -6,7 +6,6 @@ WPF windows, dialogs, and partial classes for the terminal UI.
 
 - `MainWindow.xaml` / `MainWindow.xaml.cs` — Primary terminal window host, pane layout, input routing, and session lifecycle.
 - `MainWindow.Commands.cs` — Built-in terminal command tracker and `help` command dispatcher exposing bar and session features via typed commands.
-- `MainWindow.Suggestions.cs` — Floating command-history and built-in command autocomplete popup with Up/Down arrow navigation.
 - `MainWindow.Bell.cs` — Terminal bell notification handling.
 - `MainWindow.CloseConfirmation.cs` — Confirmation prompt when closing multiple active tabs.
 - `MainWindow.Compatibility.cs` — Per-pane TUI compatibility profile selection.
